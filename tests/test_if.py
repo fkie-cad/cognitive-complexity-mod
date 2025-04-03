@@ -1,7 +1,6 @@
 import textwrap
 
 import pytest
-from tree_sitter import Point
 
 from modified_cognitive_complexity.complexity import Location, Cost, Nesting
 from .util import assert_scores, score
