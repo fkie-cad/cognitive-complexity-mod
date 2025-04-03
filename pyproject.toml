@@ -17,15 +17,15 @@ requires-python = ">= 3.13"
 #    "License :: OSI Approved :: MIT License",
 #]
 dependencies = [
-    "typer",
-    "tree-sitter",
-    "tree-sitter-cpp"
+    "typer~=0.15.2",
+    "tree-sitter~=0.24.0",
+    "tree-sitter-cpp~=0.23.4"
 ]
 
 
 [dependency-groups]
 test = [
-    "pytest"
+    "pytest^=8.3.5"
 ]
 
 #
