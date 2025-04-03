@@ -1,0 +1,6 @@
+* text=auto
+
+# Known text files
+*.py text
+*.txt text
+*.toml text
