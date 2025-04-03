@@ -47,6 +47,25 @@ from .util import assert_scores, score
             ],
             id="goto nesting",
         ),
+        pytest.param(
+            """\
+            if (x)
+                goto L1;
+            if (y)
+                goto L2;
+            if (y) {}
+            L1:;
+            L2:;
+            """,
+            [
+                score((0, 0), (1, 12), 1, Nesting()),
+                score((1, 4), (1, 12), 1, None),
+                score((2, 0), (3, 12), 1, Nesting(goto=1)),
+                score((3, 4), (3, 12), 1, None),
+                score((4, 0), (4, 9), 1, Nesting(goto=2)),
+            ],
+            id="goto overlapping",
+        ),
     ),
 )
 def test(code: str, expected_scores: list[tuple[Location, Cost]]):
