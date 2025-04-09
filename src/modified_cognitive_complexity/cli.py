@@ -12,7 +12,7 @@ app = typer.Typer()
 
 @app.command()
 def main(
-        annotate: Annotated[bool, typer.Option()] = False
+    annotate: Annotated[bool, typer.Option(help="Display per-line complexity annotations instead of a single summary value.")] = False
 ):
     data = sys.stdin.buffer.read()
 
