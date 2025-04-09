@@ -2,7 +2,7 @@ import sys
 from collections import defaultdict
 from typing import Annotated
 
-import tree_sitter_cpp
+import tree_sitter_c
 import typer
 from .complexity import cognitive_complexity, Cost
 from tree_sitter import Language, Parser
@@ -16,7 +16,7 @@ def main(
 ):
     data = sys.stdin.buffer.read()
 
-    lang = Language(tree_sitter_cpp.language())
+    lang = Language(tree_sitter_c.language())
     parser = Parser(lang)
     tree = parser.parse(data)
 
