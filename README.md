@@ -1,6 +1,8 @@
 # Modified Cognitive Complexity
 
 A Python tool to calculate the **Modified Cognitive Complexity** of C source code using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) for parsing.
+TODO: Paper
+TODO: Difference to original cognitive complexity
 
 ---
 
@@ -25,16 +27,16 @@ from the root of the project directory.
 The CLI tool `modified_cc` reads C source code from standard input (`stdin`).
 
 For example, on Linux, you can compute the cognitive complexity of a file like this:
-````bash
+```bash
 cat example.c | modified_cc
-````
+```
 
 
 ### Using as a library
 
-To use the tool as a Python library, import the modified_cognitive_complexity module and call the cognitive_complexity function:
+To use the tool as a Python library, import the `modified_cognitive_complexity` module and call the `cognitive_complexity` function:
 
-````python
+```python
 from modified_cognitive_complexity import *
 from tree_sitter import Language, Parser
 import tree_sitter_c
@@ -49,4 +51,4 @@ tree = parser.parse(code)
 scores = cognitive_complexity(tree)
 total = sum(cost.total for _, cost in scores)
 print("Cognitive Complexity:", total)
-````
+```
