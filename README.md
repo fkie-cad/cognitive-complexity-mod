@@ -34,6 +34,10 @@ For example, on Linux, you can compute the cognitive complexity of a file like t
 cat example.c | modified_cc
 ```
 
+You can also use the `--annotate` flag to print the source code with per-line complexity scores annotated in the output:
+```bash
+cat example.c | modified_cc --annotate
+```
 
 ### Using as a library
 
