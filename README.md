@@ -51,7 +51,8 @@ lang = Language(tree_sitter_c.language())
 parser = Parser(lang)
 tree = parser.parse(code)
 
-scores = cognitive_complexity(tree)
-total = sum(cost.total for _, cost in scores)
-print("Cognitive Complexity:", total)
+toplevel_scores, function_scores = cognitive_complexity(tree.walk())
+toplevel_total = sum(cost.total for _, cost in toplevel_scores)
+functions_total = sum(sum(cost.total for _, cost in scores) for scores in function_scores.values())
+print("Cognitive Complexity:", toplevel_total + functions_total)
 ```
