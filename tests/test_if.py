@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from modified_cognitive_complexity.complexity import Location, Cost, Nesting
+from modified_cognitive_complexity.complexity import Location, Score, Nesting
 from .util import assert_scores, score
 
 
@@ -87,5 +87,5 @@ from .util import assert_scores, score
         ),
     ),
 )
-def test(code: str, expected_scores: list[tuple[Location, Cost]]):
+def test(code: str, expected_scores: list[tuple[Location, Score]]):
     assert_scores(textwrap.dedent(code), expected_scores)

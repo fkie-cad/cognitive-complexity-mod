@@ -1,17 +1,19 @@
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Iterator, NamedTuple
 
-from tree_sitter import Tree, TreeCursor, Point
+from tree_sitter import TreeCursor, Point
 
 
 @dataclass(frozen=False, slots=True)
 class Nesting:
+    """Represents the nesting caused by control flow and spanning gotos."""
     value: int = 0
     goto: int = 0
 
 
 @dataclass(frozen=False, slots=True)
-class Cost:
+class Score:
+    """Represents the score of a node in the sytanx tree, consisting of an increment and a nesting."""
     increment: int
     nesting: Nesting | None
     
@@ -22,18 +24,21 @@ class Cost:
 
 @dataclass(frozen=True, slots=True, order=True)
 class Location:
+    """A location in the syntax tree consisting of a start and end position."""
     start: Point
     end: Point
 
 
-type LabelId = str
+type _LabelId = str
+type Scores = list[tuple[Location, Score]]
 
 
 def _collect_general(
     cursor: TreeCursor,
-    scores: list[tuple[Location, Cost]],
-    gotos: list[tuple[LabelId, int]],
-    labels: dict[LabelId, int],
+    scores: list[tuple[Location, Score]],
+    gotos: list[tuple[_LabelId, int]],
+    labels: dict[_LabelId, int],
+    function_scores: dict[bytes, Scores],
     depth: int,
 ):
     """
@@ -52,6 +57,7 @@ def _collect_general(
     :param gotos: A list of (label name, index) tuples representing `goto` statements
         and their position in the scores list.
     :param labels: A mapping from label names to their position in the scores list.
+    :param function_scores: A mapping from function names to their collected scores.
     :param depth: The current nesting depth, which increases when entering 
         control structures that affect complexity.
         
@@ -60,7 +66,24 @@ def _collect_general(
     
     node_type = cursor.node.type
 
-    if node_type == "goto_statement":
+    if node_type == "function_definition":
+        function_name: bytes | None = None
+        for _ in _childs(cursor):
+            if cursor.field_name == "declarator":
+                for _ in _childs(cursor):
+                    if cursor.field_name == "declarator":
+                        function_name = cursor.node.text
+
+        for _ in _childs(cursor):
+            if cursor.field_name == "body":
+                if function_name is not None:
+                    toplevel_scores, nested_function_scores = cognitive_complexity(cursor)
+                    function_scores[function_name] = toplevel_scores
+                    function_scores.update(nested_function_scores)
+                else:
+                    pass  # TODO: Maybe warning or exception?
+        
+    elif node_type == "goto_statement":
         assert cursor.goto_first_child()
         assert cursor.goto_next_sibling()
         assert cursor.node.type == "statement_identifier"
@@ -72,7 +95,7 @@ def _collect_general(
 
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=None)
+            Score(increment=1, nesting=None)
         ))
 
     elif node_type == "labeled_statement":
@@ -85,7 +108,7 @@ def _collect_general(
         labels[label_text] = len(scores)
 
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, depth)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth)
 
     # elif node_type == "compound_statement":
     #     for _ in childs(cursor):
@@ -94,71 +117,71 @@ def _collect_general(
     elif node_type == "if_statement":
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=Nesting(value=depth))
+            Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence"} else 0
-            _collect_general(cursor, scores, gotos, labels, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
 
     elif node_type == "else_clause":
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=None)
+            Score(increment=1, nesting=None)
         ))
         for _ in _childs(cursor):
             if cursor.node.type == "if_statement":
                 for _ in _childs(cursor):
-                    _collect_general(cursor, scores, gotos, labels, depth + 1)
+                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
             else:
-                _collect_general(cursor, scores, gotos, labels, depth + 1)
+                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
 
     elif node_type == "switch_statement":
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=Nesting(value=depth))
+            Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, depth + 1)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
 
     elif node_type == "for_statement":
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=Nesting(value=depth))
+            Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
 
     elif node_type in {"while_statement", "do_statement"}:
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=Nesting(value=depth))
+            Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
 
     elif node_type == "conditional_expression":
         scores.append((
             Location(cursor.node.start_point, cursor.node.end_point),
-            Cost(increment=1, nesting=Nesting(value=depth))
+            Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence", "alternative"} else 0
-            _collect_general(cursor, scores, gotos, labels, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
 
     elif node_type == "binary_expression":
         _collect_expression(cursor, None, scores)
 
     else:
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, depth)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth)
 
 
 def _collect_expression(
         cursor: TreeCursor,
         parent_operator: bytes | None,
-        scores: list[tuple[Location, Cost]]
+        scores: list[tuple[Location, Score]]
 ):
     """
     Recursively collect cognitive complexity costs from binary expressions.
@@ -179,14 +202,19 @@ def _collect_expression(
         if operator in {b"&&", b"||"} and parent_operator != operator:
             scores.append((
                 Location(cursor.node.start_point, cursor.node.end_point),
-                Cost(increment=1, nesting=None)
+                Score(increment=1, nesting=None)
             ))
 
     for _ in _childs(cursor):
         _collect_expression(cursor, operator, scores)
 
 
-def cognitive_complexity(tree: Tree) -> list[tuple[Location, Cost]]:
+class Result(NamedTuple):
+    toplevel_costs: Scores
+    function_costs: dict[bytes, Scores]
+    
+    
+def cognitive_complexity(cursor: TreeCursor) -> Result:
     """
     Calculate the modified cognitive complexity of control flow structures in a syntax tree.
 
@@ -195,22 +223,19 @@ def cognitive_complexity(tree: Tree) -> list[tuple[Location, Cost]]:
     conditional expressions, and goto statements. The result is a list of location-cost 
     tuples, where each cost reflects the increase in complexity at that location, including 
     nesting depth and any additional complexity introduced by goto statements.
+    
+    :param cursor: A cursor currently positioned at a node, typically an expression node.
 
-    Parameters:
-        tree (Tree): A Tree-sitter syntax tree representing parsed source code.
-
-    Returns:
-        list[tuple[Location, Cost]]: A list of tuples where each tuple contains:
-            - Location: The start and end point in the source code for the construct.
-            - Cost: The cognitive cost associated with that construct, including increment 
-              values and nesting penalties.
+    :return: A tuple consisting of the scores contained in the top level of the syntax tree
+        and the scores of each contained function.
     """
     
-    scores: list[tuple[Location, Cost]] = []
-    gotos: list[tuple[LabelId, int]] = []
-    labels: dict[LabelId, int] = {}
+    scores: list[tuple[Location, Score]] = []
+    gotos: list[tuple[_LabelId, int]] = []
+    labels: dict[_LabelId, int] = {}
+    function_scores: dict[bytes, Scores] = {}
 
-    _collect_general(tree.walk(), scores, gotos, labels, 0)
+    _collect_general(cursor, scores, gotos, labels, function_scores, 0)
 
     for labelId, index in gotos:
         (start, stop) = sorted((index, labels[labelId]))
@@ -220,7 +245,7 @@ def cognitive_complexity(tree: Tree) -> list[tuple[Location, Cost]]:
             if cost.nesting is not None:
                 cost.nesting.goto += 1
 
-    return scores
+    return Result(scores, function_scores)
 
 
 def _childs(cursor: TreeCursor) -> Iterator[None]:
