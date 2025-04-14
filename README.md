@@ -1,8 +1,11 @@
 # Modified Cognitive Complexity
 
-A Python tool to calculate the **Modified Cognitive Complexity** of C source code using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) for parsing.
-TODO: Paper
-TODO: Difference to original cognitive complexity
+A Python tool to calculate the Modified Cognitive Complexity of C source code using Tree-sitter for parsing.
+
+Cognitive Complexity is a code metric introduced by SonarSource to address shortcomings in traditional cyclomatic complexity. It aims to more accurately reflect how difficult code is to understand by tracking control flow structures and their nesting, while ignoring structural elements that do not contribute to cognitive load.
+You can read the original proposal here [TODO: Link].
+
+This repository implements a modified version of Cognitive Complexity as proposed in [TODO: insert paper link here]. [TODO: Explain difference]
 
 ---
 
