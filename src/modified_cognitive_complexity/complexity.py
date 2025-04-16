@@ -65,6 +65,7 @@ def _collect_general(
     """
     
     node_type = cursor.node.type
+    node_location = Location(cursor.node.start_point, cursor.node.end_point)
 
     if node_type == "function_definition":
         function_name: bytes | None = None
@@ -94,7 +95,7 @@ def _collect_general(
         gotos.append((label_text, len(scores)))
 
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=None)
         ))
 
@@ -116,7 +117,7 @@ def _collect_general(
 
     elif node_type == "if_statement":
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
@@ -125,7 +126,7 @@ def _collect_general(
 
     elif node_type == "else_clause":
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=None)
         ))
         for _ in _childs(cursor):
@@ -137,7 +138,7 @@ def _collect_general(
 
     elif node_type == "switch_statement":
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
@@ -145,7 +146,7 @@ def _collect_general(
 
     elif node_type == "for_statement":
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
@@ -154,7 +155,16 @@ def _collect_general(
 
     elif node_type in {"while_statement", "do_statement"}:
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
+            Score(increment=1, nesting=Nesting(value=depth))
+        ))
+        for _ in _childs(cursor):
+            depth_inc = 1 if cursor.field_name == "body" else 0
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+    
+    elif node_type == "catch_clause":
+        scores.append((
+            node_location,
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
@@ -163,7 +173,7 @@ def _collect_general(
 
     elif node_type == "conditional_expression":
         scores.append((
-            Location(cursor.node.start_point, cursor.node.end_point),
+            node_location,
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):

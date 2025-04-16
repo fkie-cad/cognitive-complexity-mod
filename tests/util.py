@@ -1,14 +1,14 @@
-import tree_sitter_c
+import tree_sitter_cpp
 from tree_sitter import Language, Parser, Point
 
 from modified_cognitive_complexity import *
-        
+
 
 def assert_scores(
     code: str,
     expected_scores: dict[bytes | None, Scores]
 ):
-    lang = Language(tree_sitter_c.language())
+    lang = Language(tree_sitter_cpp.language())
     parser = Parser(lang)
     tree = parser.parse(code.encode())
 
@@ -25,7 +25,7 @@ def assert_toplevel_scores(
     code: str,
     expected_scores: Scores
 ):
-    lang = Language(tree_sitter_c.language())
+    lang = Language(tree_sitter_cpp.language())
     parser = Parser(lang)
     tree = parser.parse(code.encode())
 
