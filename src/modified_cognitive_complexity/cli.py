@@ -22,16 +22,14 @@ def main(
     tree = parser.parse(data)
 
     function_scores: dict
-    toplevel_scores, function_scores = cognitive_complexity(tree.walk())
+    scores_by_function = cognitive_complexity(tree.walk())
 
     if annotate:
         lines = data.replace(b'\t', b'    ').decode().splitlines()
         indent = max(len(line) for line in lines)
 
         cost_by_line: dict[int, list[Score]] = defaultdict(list)
-        for location, cost in toplevel_scores:
-            cost_by_line[location.start.row].append(cost)
-        for _, scores in function_scores.items():
+        for _, scores in scores_by_function.items():
             for location, cost in scores:
                 cost_by_line[location.start.row].append(cost)
 
@@ -50,24 +48,26 @@ def main(
         
         print("")
 
-    toplevel_cost = sum(cost.total for _, cost in toplevel_scores)
-    total_cost = toplevel_cost + sum(
-        sum(cost.total for _, cost in scores)
-        for scores in function_scores.values()
+
+    total_cost = sum(
+        sum(cost.total for _, cost in scores) for scores in scores_by_function.values()
     )
     print(f"Total Modified Cognitive Complexity: {total_cost}")
     
-    if len(function_scores) > 0:
+    if len(scores_by_function) > 1:
         print("")
         print("Complexity by function:")
     
         # Per-function summary
-        for func_name, scores in function_scores.items():
-            func_total = sum(cost.total for _, cost in scores)
+        for func_name, function_scores in scores_by_function.items():
+            if func_name is None:
+                continue
+            
+            func_total = sum(cost.total for _, cost in function_scores)
             func_name = func_name.decode(errors="replace")
             print(f"Function '{func_name}': {func_total}")
 
-        print(f"Top-level complexity: {toplevel_cost}")
+        print(f"Top-level complexity: {sum(cost.total for _, cost in scores_by_function[None])}")
 
 
 if __name__ == "__main__":

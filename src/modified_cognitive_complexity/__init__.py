@@ -1,1 +1,1 @@
-from .complexity import cognitive_complexity, Result, Scores, Score, Location, Nesting
+from .complexity import cognitive_complexity, Scores, Score, Location, Nesting

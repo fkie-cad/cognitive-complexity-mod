@@ -38,7 +38,7 @@ def _collect_general(
     scores: list[tuple[Location, Score]],
     gotos: list[tuple[_LabelId, int]],
     labels: dict[_LabelId, int],
-    function_scores: dict[bytes, Scores],
+    function_scores: dict[bytes | None, Scores],
     depth: int,
 ):
     """
@@ -74,14 +74,14 @@ def _collect_general(
                     if cursor.field_name == "declarator":
                         function_name = cursor.node.text
 
-        for _ in _childs(cursor):
-            if cursor.field_name == "body":
-                if function_name is not None:
-                    toplevel_scores, nested_function_scores = cognitive_complexity(cursor)
-                    function_scores[function_name] = toplevel_scores
-                    function_scores.update(nested_function_scores)
-                else:
-                    pass  # TODO: Maybe warning or exception?
+        if function_name is not None:
+            for _ in _childs(cursor):
+                if cursor.field_name == "body":
+                    nested_scores = cognitive_complexity(cursor)
+                    function_scores[function_name] = nested_scores.pop(None)
+                    function_scores.update(nested_scores)
+        else:
+            pass  # TODO: Maybe warning or exception?
         
     elif node_type == "goto_statement":
         assert cursor.goto_first_child()
@@ -208,13 +208,8 @@ def _collect_expression(
     for _ in _childs(cursor):
         _collect_expression(cursor, operator, scores)
 
-
-class Result(NamedTuple):
-    toplevel_costs: Scores
-    function_costs: dict[bytes, Scores]
     
-    
-def cognitive_complexity(cursor: TreeCursor) -> Result:
+def cognitive_complexity(cursor: TreeCursor) -> dict[bytes | None, Scores]:
     """
     Calculate the modified cognitive complexity of control flow structures in a syntax tree.
 
@@ -226,14 +221,14 @@ def cognitive_complexity(cursor: TreeCursor) -> Result:
     
     :param cursor: A cursor currently positioned at a node, typically an expression node.
 
-    :return: A tuple consisting of the scores contained in the top level of the syntax tree
-        and the scores of each contained function.
+    :return: A mapping from each function name to its score. The score of top-level constructs
+        is saved under the 'None' key.
     """
     
     scores: list[tuple[Location, Score]] = []
     gotos: list[tuple[_LabelId, int]] = []
     labels: dict[_LabelId, int] = {}
-    function_scores: dict[bytes, Scores] = {}
+    function_scores: dict[bytes | None, Scores] = {}
 
     _collect_general(cursor, scores, gotos, labels, function_scores, 0)
 
@@ -245,7 +240,8 @@ def cognitive_complexity(cursor: TreeCursor) -> Result:
             if cost.nesting is not None:
                 cost.nesting.goto += 1
 
-    return Result(scores, function_scores)
+    function_scores[None] = scores
+    return function_scores
 
 
 def _childs(cursor: TreeCursor) -> Iterator[None]:
