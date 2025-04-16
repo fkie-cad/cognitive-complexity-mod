@@ -4,22 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modified_cognitive_complexity"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
     { name="Hendrik Mika", email="hendrik.mika@fkie.fraunhofer.de" },
 ]
-description = "Analyzes C source code and calculates Modified Cognitive Complexity scores."
+description = "Analyzes C/C++ source code and calculates Modified Cognitive Complexity scores."
 readme = "README.md"
-requires-python = ">= 3.13"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-#    "License :: OSI Approved :: MIT License",
-]
+requires-python = ">= 3.13"  # Probably not needed to be as high
 dependencies = [
     "typer~=0.15.2",
     "tree-sitter~=0.24.0",
-    "tree-sitter-c~=0.23.4",
+#    "tree-sitter-c~=0.23.4",
     "tree-sitter-cpp~=0.23.4"
 ]
 
