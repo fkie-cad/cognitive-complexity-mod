@@ -1,6 +1,6 @@
 # Modified Cognitive Complexity
 
-A Python tool to calculate the Modified Cognitive Complexity of C source code using Tree-sitter for parsing.
+A Python tool to calculate the Modified Cognitive Complexity of C/C++ source code using Tree-sitter for parsing.
 
 Cognitive Complexity is a code metric introduced by SonarSource to address shortcomings in traditional cyclomatic complexity. It aims to more accurately reflect how difficult code is to understand by tracking control flow structures and their nesting, while ignoring structural elements that do not contribute to cognitive load.
 You can read the original proposal here [TODO: Link].
@@ -29,12 +29,12 @@ from the root of the project directory.
 
 The CLI tool `modified_cc` reads C source code from standard input (`stdin`).
 
-For example, on Linux, you can compute the cognitive complexity of a file like this:
+For example, on Linux you can compute the cognitive complexity of a file like this:
 ```bash
 cat example.c | modified_cc
 ```
 
-You can also use the `--annotate` flag to print the source code with per-line complexity scores annotated in the output:
+You can also use the `--annotate` flag to additionally print the source code with per-line complexity scores annotated in the output:
 ```bash
 cat example.c | modified_cc --annotate
 ```
@@ -46,17 +46,19 @@ To use the tool as a Python library, import the `modified_cognitive_complexity` 
 ```python
 from modified_cognitive_complexity import *
 from tree_sitter import Language, Parser
-import tree_sitter_c
+import tree_sitter_cpp
 
 with open("example.c", "rb") as f:
     code = f.read()
 
-lang = Language(tree_sitter_c.language())
+lang = Language(tree_sitter_cpp.language())
 parser = Parser(lang)
 tree = parser.parse(code)
 
-toplevel_scores, function_scores = cognitive_complexity(tree.walk())
-toplevel_total = sum(cost.total for _, cost in toplevel_scores)
-functions_total = sum(sum(cost.total for _, cost in scores) for scores in function_scores.values())
-print("Cognitive Complexity:", toplevel_total + functions_total)
+scores_by_function = cognitive_complexity(tree.walk())
+for function_name, scores in scores_by_function:
+    if function_name is None:
+        function_name = "Top-Level"
+		
+    print(f"{function_name}: {sum(cost.total for _, cost in scores)}")
 ```
