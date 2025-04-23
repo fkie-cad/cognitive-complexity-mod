@@ -23,13 +23,14 @@ def assert_scores(
 
 def assert_toplevel_scores(
     code: str,
-    expected_scores: Scores
+    expected_scores: Scores,
+    structural_gotos: bool = False
 ):
     lang = Language(tree_sitter_cpp.language())
     parser = Parser(lang)
     tree = parser.parse(code.encode())
 
-    scores = cognitive_complexity(tree.walk())
+    scores = cognitive_complexity(tree.walk(), structural_gotos)
     assert sorted(scores[None]) == sorted(expected_scores)
     assert len(scores) == 1
 
