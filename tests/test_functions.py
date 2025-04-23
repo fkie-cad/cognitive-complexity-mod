@@ -40,6 +40,32 @@ from tests.util import score, assert_scores
             },
             id="functions empty",
         ),
+        pytest.param(
+            """\
+            function f0() {
+                L:;
+                goto L;
+                if (x) {}
+            }
+            function f1() {
+                if (x) {}
+                goto L;
+                L:;
+            }
+            """,
+            {
+                b'f0': [
+                    score((2, 4), (2, 11), 1, None),
+                    score((3, 4), (3, 13), 1, Nesting())
+                ],
+                b'f1': [
+                    score((6, 4), (6, 13), 1, Nesting()),
+                    score((7, 4), (7, 11), 1, None)
+                ],
+                None: []
+            },
+            id="functions goto",
+        ),
     ),
 )
 def test(
