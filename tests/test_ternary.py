@@ -3,7 +3,7 @@ import textwrap
 import pytest
 
 from modified_cognitive_complexity.complexity import Nesting, Scores
-from .util import assert_toplevel_scores, score
+from tests.util import assert_toplevel_scores, score
 
 
 @pytest.mark.parametrize(

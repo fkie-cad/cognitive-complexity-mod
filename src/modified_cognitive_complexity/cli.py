@@ -6,7 +6,7 @@ import tree_sitter_cpp
 import typer
 from tree_sitter import Language, Parser
 
-from .complexity import cognitive_complexity, Score
+from modified_cognitive_complexity.complexity import cognitive_complexity, Score
 
 app = typer.Typer()
 

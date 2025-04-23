@@ -1,2 +1,2 @@
-from .complexity import cognitive_complexity, Scores, Score, Location, Nesting
-from .helpers import cognitive_complexity_for_string, cognitive_complexity_for_file 
+from modified_cognitive_complexity.complexity import cognitive_complexity, Scores, Score, Location, Nesting
+from modified_cognitive_complexity.helpers import cognitive_complexity_for_string, cognitive_complexity_for_file 
