@@ -8,6 +8,7 @@ from modified_cognitive_complexity import cognitive_complexity
 
 def cognitive_complexity_for_file(
     file: Path,
+    goto_nesting: bool = True,
     structural_gotos: bool = False
 ) -> dict[bytes | None, int]:
     """
@@ -28,11 +29,12 @@ def cognitive_complexity_for_file(
     """
     
     code = file.read_bytes()
-    return cognitive_complexity_for_string(code, structural_gotos)
+    return cognitive_complexity_for_string(code, goto_nesting, structural_gotos)
 
 
 def cognitive_complexity_for_string(
     code: str | bytes | bytearray | memoryview,
+    goto_nesting: bool = True,
     structural_gotos: bool = False
 ) -> dict[bytes | None, int]:
     """
@@ -59,7 +61,7 @@ def cognitive_complexity_for_string(
     parser = Parser(lang)
     tree = parser.parse(code)
 
-    scores_by_function = cognitive_complexity(tree.walk(), structural_gotos)
+    scores_by_function = cognitive_complexity(tree.walk(), goto_nesting, structural_gotos)
     return {
         function_name: sum(cost.total for _, cost in scores)
         for function_name, scores

@@ -228,6 +228,7 @@ def _collect_expression(
     
 def cognitive_complexity(
     cursor: TreeCursor,
+    goto_nesting: bool = True,
     structural_gotos: bool = False
 ) -> dict[bytes | None, Scores]:
     """
@@ -256,18 +257,19 @@ def cognitive_complexity(
 
     _collect_general(cursor, scores, gotos, labels, function_scores, 0)
 
-    for labelId, goto_index in gotos:
-        label_index, _ = labels[labelId]
-        (start, stop) = sorted((goto_index, label_index))
-        start += 1 # shift start behind goto/label
-            
-        for _, cost in scores[start:stop]:
-            if cost.nesting is not None:
-                cost.nesting.goto += 1
-
-        for label_index, label_nesting in labels.values():
-            if start <= label_index < stop:
-                label_nesting.goto += 1
+    if goto_nesting:
+        for labelId, goto_index in gotos:
+            label_index, _ = labels[labelId]
+            (start, stop) = sorted((goto_index, label_index))
+            start += 1 # shift start behind goto/label
+                
+            for _, cost in scores[start:stop]:
+                if cost.nesting is not None:
+                    cost.nesting.goto += 1
+        
+            for label_index, label_nesting in labels.values():
+                if start <= label_index < stop:
+                    label_nesting.goto += 1
 
     if structural_gotos:
         for labelId, goto_index in gotos:
