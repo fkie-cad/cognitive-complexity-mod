@@ -1,3 +1,4 @@
+import dataclasses
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -37,7 +38,7 @@ def _collect_general(
     cursor: TreeCursor,
     scores: list[tuple[Location, Score]],
     gotos: list[tuple[_LabelId, int]],
-    labels: dict[_LabelId, tuple[int, int]],
+    labels: dict[_LabelId, tuple[int, Nesting]],
     function_scores: dict[bytes | None, Scores],
     depth: int,
 ):
@@ -107,7 +108,12 @@ def _collect_general(
         label_text = cursor.node.text.decode(encoding="utf-8")
         cursor.goto_parent()
 
-        labels[label_text] = len(scores), depth
+        labels[label_text] = len(scores), Nesting(value=depth)
+        
+        scores.append((
+            node_location,
+            Score(increment=0, nesting=None)
+        ))
 
         for _ in _childs(cursor):
             _collect_general(cursor, scores, gotos, labels, function_scores, depth)
@@ -245,26 +251,30 @@ def cognitive_complexity(
     
     scores: list[tuple[Location, Score]] = []
     gotos: list[tuple[_LabelId, int]] = []
-    labels: dict[_LabelId, tuple[int, int]] = {}
+    labels: dict[_LabelId, tuple[int, Nesting]] = {}
     function_scores: dict[bytes | None, Scores] = {}
 
     _collect_general(cursor, scores, gotos, labels, function_scores, 0)
 
-    if structural_gotos:
-        for labelId, goto_index in gotos:
-            _, label_depth = labels[labelId]
-            scores[goto_index][1].nesting = Nesting(value=label_depth)
-
     for labelId, goto_index in gotos:
         label_index, _ = labels[labelId]
         (start, stop) = sorted((goto_index, label_index))
-        if start == goto_index:  # if goto before label, move start behind goto
-            start += 1
+        start += 1 # shift start behind goto/label
+            
         for _, cost in scores[start:stop]:
             if cost.nesting is not None:
                 cost.nesting.goto += 1
 
-    function_scores[None] = scores
+        for label_index, label_nesting in labels.values():
+            if start <= label_index < stop:
+                label_nesting.goto += 1
+
+    if structural_gotos:
+        for labelId, goto_index in gotos:
+            _, label_depth = labels[labelId]
+            scores[goto_index][1].nesting = dataclasses.replace(label_depth)
+            
+    function_scores[None] = [score for score in scores if score[1].total > 0]
     return function_scores
 
 

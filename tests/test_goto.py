@@ -84,9 +84,9 @@ from tests.util import assert_toplevel_scores, score
             [
                 score((0, 0), (0, 7), 1, Nesting(value=2, goto=0)),
                 score((1, 0), (7, 1), 1, Nesting(value=0, goto=1)),
-                score((2, 4), (2, 11), 1, Nesting(value=2, goto=1)),
+                score((2, 4), (2, 11), 1, Nesting(value=2, goto=0)),
                 score((3, 4), (6, 5), 1, Nesting(value=1, goto=2)),
-                score((4, 8), (4, 15), 1, Nesting(value=2, goto=2)),
+                score((4, 8), (4, 15), 1, Nesting(value=2, goto=0)),
             ],
             True,
             id="structural goto",
