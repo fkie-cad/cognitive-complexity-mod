@@ -13,7 +13,9 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    annotate: Annotated[bool, typer.Option(help="Display per-line complexity annotations instead of a single summary value.")] = False
+    annotate: Annotated[bool, typer.Option(help="Display per-line complexity annotations instead of a single summary value.")] = False,
+    goto_nesting: Annotated[bool, typer.Option(help="Apply nesting by gotos.")] = True,
+    structural_gotos: Annotated[bool, typer.Option(help="Apply nesting to gotos by their respective labels.")] = False
 ):
     data = sys.stdin.buffer.read()
 
@@ -22,7 +24,7 @@ def main(
     tree = parser.parse(data)
 
     function_scores: dict
-    scores_by_function = cognitive_complexity(tree.walk())
+    scores_by_function = cognitive_complexity(tree.walk(), goto_nesting, structural_gotos)
 
     if annotate:
         lines = data.replace(b'\t', b'    ').decode().splitlines()
