@@ -9,7 +9,7 @@ from tests.util import assert_toplevel_scores, score
 
 
 @pytest.mark.parametrize(
-    ("code", "expected_scores", "structural_gotos"),
+    ("code", "expected_scores", "goto_nesting", "structural_gotos"),
     (
         pytest.param(
             """\
@@ -21,6 +21,7 @@ from tests.util import assert_toplevel_scores, score
                 score((0, 0), (1, 11), 1, Nesting()),
                 score((1, 4), (1, 11), 1, None),
             ],
+            True,
             False,
             id="goto forward",
         ),
@@ -34,6 +35,7 @@ from tests.util import assert_toplevel_scores, score
                 score((1, 0), (2, 11), 1, Nesting(goto=1)),
                 score((2, 4), (2, 11), 1, None),
             ],
+            True,
             False,
             id="goto backward",
         ),
@@ -49,6 +51,7 @@ from tests.util import assert_toplevel_scores, score
                 score((1, 4), (1, 11), 1, None),
                 score((2, 0), (2, 9), 1, Nesting(goto=1)),
             ],
+            True,
             False,
             id="goto nesting",
         ),
@@ -69,6 +72,7 @@ from tests.util import assert_toplevel_scores, score
                 score((3, 4), (3, 12), 1, None),
                 score((4, 0), (4, 9), 1, Nesting(goto=2)),
             ],
+            True,
             False,
             id="goto overlapping",
         ),
@@ -94,9 +98,40 @@ from tests.util import assert_toplevel_scores, score
                 score((9, 0), (9, 8), 1, Nesting()),
             ],
             True,
+            True,
             id="structural goto",
+        ),
+        pytest.param(
+            """\
+            L1:;
+            goto L2;
+            if (x) {
+                goto L2;
+                if (x) {
+                    goto L2;
+                    L2:;
+                }
+            }
+            goto L1;
+            """,
+            [
+                score((1, 0), (1, 8), 1, Nesting(value=2, goto=0)),
+                score((2, 0), (8, 1), 1, Nesting(value=0, goto=0)),
+                score((3, 4), (3, 12), 1, Nesting(value=2, goto=0)),
+                score((4, 4), (7, 5), 1, Nesting(value=1, goto=0)),
+                score((5, 8), (5, 16), 1, Nesting(value=2, goto=0)),
+                score((9, 0), (9, 8), 1, Nesting()),
+            ],
+            False,
+            True,
+            id="no nesting goto",
         ),
     ),
 )
-def test(code: str, expected_scores: Scores, structural_gotos: bool):
-    assert_toplevel_scores(textwrap.dedent(code), expected_scores, structural_gotos=structural_gotos)
+def test(code: str, expected_scores: Scores, goto_nesting: bool, structural_gotos: bool):
+    assert_toplevel_scores(
+        textwrap.dedent(code),
+        expected_scores,
+        goto_nesting=goto_nesting,
+        structural_gotos=structural_gotos
+    )
