@@ -21,8 +21,9 @@ def cognitive_complexity_for_file(
     The top-level modified cognitive complexity score is mapped to the 'None' key.
     
     :param file: A Path from which the source code is read.
-    :param structural_gotos: A flag specifying if goto statements should be treated as
-        structural constructs.
+    :param goto_nesting: If the additional nesting penalty imposed by gotos should be applied.
+    :param structural_gotos: A flag specifying if goto statements should inherit a nesting penalty
+        by their respective label.
 
     :return: A mapping from each function name to its score. The score of top-level constructs
         is mapped to the 'None' key.
@@ -47,8 +48,9 @@ def cognitive_complexity_for_string(
     The top-level modified cognitive complexity score is mapped to the 'None' key.
     
     :param code: The source code.
-    :param structural_gotos: A flag specifying if goto statements should be treated as
-        structural constructs.
+    :param goto_nesting: If the additional nesting penalty imposed by gotos should be applied.
+    :param structural_gotos: A flag specifying if goto statements should inherit a nesting penalty
+        by their respective label.
 
     :return: A mapping from each function name to its score. The score of top-level constructs
         is mapped to the 'None' key.

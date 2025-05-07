@@ -110,6 +110,8 @@ def _collect_general(
 
         labels[label_text] = len(scores), Nesting(value=depth)
         
+        # We add scores of 0 for labels, so we can track their locations later
+        # Scores of 0 are later removed again
         scores.append((
             node_location,
             Score(increment=0, nesting=None)
@@ -118,6 +120,7 @@ def _collect_general(
         for _ in _childs(cursor):
             _collect_general(cursor, scores, gotos, labels, function_scores, depth)
 
+    # already handled by else branch
     # elif node_type == "compound_statement":
     #     for _ in childs(cursor):
     #         collect_general(cursor, scores, gotos, labels, depth)
@@ -243,8 +246,9 @@ def cognitive_complexity(
     All top-level costs are mapped to the 'None' key.
     
     :param cursor: A cursor currently positioned at a node, typically an expression node.
-    :param structural_gotos: A flag specifying if goto statements should be treated as
-        structural constructs.
+    :param goto_nesting: If the additional nesting penalty imposed by gotos should be applied. 
+    :param structural_gotos: A flag specifying if goto statements should inherit a nesting penalty
+        by their respective label.
 
     :return: A mapping from each function name to its score. The score of top-level constructs
         is mapped to the 'None' key.

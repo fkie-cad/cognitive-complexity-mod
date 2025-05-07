@@ -60,7 +60,6 @@ def main(
         print("")
         print("Complexity by function:")
     
-        # Per-function summary
         for func_name, function_scores in scores_by_function.items():
             if func_name is None:
                 continue
