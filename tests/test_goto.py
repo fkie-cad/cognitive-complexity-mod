@@ -6,6 +6,8 @@ from modified_cognitive_complexity.complexity import Nesting, Scores
 from tests.util import assert_toplevel_scores, score
 
 
+
+
 @pytest.mark.parametrize(
     ("code", "expected_scores", "structural_gotos"),
     (
@@ -72,21 +74,24 @@ from tests.util import assert_toplevel_scores, score
         ),
         pytest.param(
             """\
-            goto L;
+            L1:;
+            goto L2;
             if (x) {
-                goto L;
+                goto L2;
                 if (x) {
-                    goto L;
-                    L:;
+                    goto L2;
+                    L2:;
                 }
             }
+            goto L1;
             """,
             [
-                score((0, 0), (0, 7), 1, Nesting(value=2, goto=0)),
-                score((1, 0), (7, 1), 1, Nesting(value=0, goto=1)),
-                score((2, 4), (2, 11), 1, Nesting(value=2, goto=0)),
-                score((3, 4), (6, 5), 1, Nesting(value=1, goto=2)),
-                score((4, 8), (4, 15), 1, Nesting(value=2, goto=0)),
+                score((1, 0), (1, 8), 1, Nesting(value=2, goto=1)),
+                score((2, 0), (8, 1), 1, Nesting(value=0, goto=2)),
+                score((3, 4), (3, 12), 1, Nesting(value=2, goto=1)),
+                score((4, 4), (7, 5), 1, Nesting(value=1, goto=3)),
+                score((5, 8), (5, 16), 1, Nesting(value=2, goto=1)),
+                score((9, 0), (9, 8), 1, Nesting()),
             ],
             True,
             id="structural goto",
