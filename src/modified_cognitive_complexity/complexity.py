@@ -231,6 +231,7 @@ def _collect_expression(
     
 def cognitive_complexity(
     cursor: TreeCursor,
+    *,
     goto_nesting: bool = True,
     structural_gotos: bool = False
 ) -> dict[bytes | None, Scores]:

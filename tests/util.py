@@ -7,6 +7,7 @@ from modified_cognitive_complexity import *
 def assert_scores(
     code: str,
     expected_scores: dict[bytes | None, Scores],
+    *,
     goto_nesting: bool = True,
     structural_gotos: bool = False
 ):
@@ -14,7 +15,7 @@ def assert_scores(
     parser = Parser(lang)
     tree = parser.parse(code.encode())
 
-    scores = cognitive_complexity(tree.walk(), goto_nesting, structural_gotos)
+    scores = cognitive_complexity(tree.walk(), goto_nesting=goto_nesting, structural_gotos=structural_gotos)
     _normalize_scores(scores)
     
     expected_scores = expected_scores.copy()
@@ -26,6 +27,7 @@ def assert_scores(
 def assert_toplevel_scores(
     code: str,
     expected_scores: Scores,
+    *,
     goto_nesting: bool = True,
     structural_gotos: bool = False
 ):
@@ -33,7 +35,7 @@ def assert_toplevel_scores(
     parser = Parser(lang)
     tree = parser.parse(code.encode())
 
-    scores = cognitive_complexity(tree.walk(), goto_nesting, structural_gotos)
+    scores = cognitive_complexity(tree.walk(), goto_nesting=goto_nesting, structural_gotos=structural_gotos)
     assert sorted(scores[None]) == sorted(expected_scores)
     assert len(scores) == 1
 

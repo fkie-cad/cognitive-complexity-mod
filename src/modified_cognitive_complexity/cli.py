@@ -24,7 +24,7 @@ def main(
     tree = parser.parse(data)
 
     function_scores: dict
-    scores_by_function = cognitive_complexity(tree.walk(), goto_nesting, structural_gotos)
+    scores_by_function = cognitive_complexity(tree.walk(), goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     if annotate:
         lines = data.replace(b'\t', b'    ').decode().splitlines()

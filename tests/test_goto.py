@@ -94,4 +94,4 @@ from tests.util import assert_toplevel_scores, score
     ),
 )
 def test(code: str, expected_scores: Scores, structural_gotos: bool):
-    assert_toplevel_scores(textwrap.dedent(code), expected_scores, structural_gotos)
+    assert_toplevel_scores(textwrap.dedent(code), expected_scores, structural_gotos=structural_gotos)
