@@ -41,6 +41,8 @@ def _collect_general(
     labels: dict[_LabelId, tuple[int, Nesting]],
     function_scores: dict[bytes | None, Scores],
     depth: int,
+    goto_nesting: bool,
+    structural_gotos: bool
 ):
     """
     Recursively traverse the syntax tree to collect cognitive complexity scores 
@@ -80,7 +82,7 @@ def _collect_general(
         if function_name is not None:
             for _ in _childs(cursor):
                 if cursor.field_name == "body":
-                    nested_scores = cognitive_complexity(cursor)
+                    nested_scores = cognitive_complexity(cursor, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
                     function_scores[function_name] = nested_scores.pop(None)
                     function_scores.update(nested_scores)
         else:
@@ -118,7 +120,7 @@ def _collect_general(
         ))
 
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     # already handled by else branch
     # elif node_type == "compound_statement":
@@ -132,7 +134,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type == "else_clause":
         scores.append((
@@ -142,9 +144,9 @@ def _collect_general(
         for _ in _childs(cursor):
             if cursor.node.type == "if_statement":
                 for _ in _childs(cursor):
-                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
+                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
             else:
-                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
+                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type == "switch_statement":
         scores.append((
@@ -152,7 +154,7 @@ def _collect_general(
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type == "for_statement":
         scores.append((
@@ -161,7 +163,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type in {"while_statement", "do_statement"}:
         scores.append((
@@ -170,7 +172,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
     
     elif node_type == "catch_clause":
         scores.append((
@@ -179,7 +181,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type == "conditional_expression":
         scores.append((
@@ -188,14 +190,14 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence", "alternative"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
     elif node_type == "binary_expression":
         _collect_expression(cursor, None, scores)
 
     else:
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
 
 
 def _collect_expression(
@@ -260,7 +262,7 @@ def cognitive_complexity(
     labels: dict[_LabelId, tuple[int, Nesting]] = {}
     function_scores: dict[bytes | None, Scores] = {}
 
-    _collect_general(cursor, scores, gotos, labels, function_scores, 0)
+    _collect_general(cursor, scores, gotos, labels, function_scores, 0, goto_nesting, structural_gotos)
 
     if goto_nesting:
         for labelId, goto_index in gotos:
