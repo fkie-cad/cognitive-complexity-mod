@@ -120,7 +120,7 @@ def _collect_general(
         ))
 
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     # already handled by else branch
     # elif node_type == "compound_statement":
@@ -134,7 +134,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "else_clause":
         scores.append((
@@ -144,9 +144,9 @@ def _collect_general(
         for _ in _childs(cursor):
             if cursor.node.type == "if_statement":
                 for _ in _childs(cursor):
-                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
             else:
-                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "switch_statement":
         scores.append((
@@ -154,7 +154,7 @@ def _collect_general(
             Score(increment=1, nesting=Nesting(value=depth))
         ))
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "for_statement":
         scores.append((
@@ -163,7 +163,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type in {"while_statement", "do_statement"}:
         scores.append((
@@ -172,7 +172,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
     
     elif node_type == "catch_clause":
         scores.append((
@@ -181,7 +181,7 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "conditional_expression":
         scores.append((
@@ -190,14 +190,14 @@ def _collect_general(
         ))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence", "alternative"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "binary_expression":
         _collect_expression(cursor, None, scores)
 
     else:
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth, structural_gotos=structural_gotos, goto_nesting=goto_nesting)
+            _collect_general(cursor, scores, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
 
 def _collect_expression(
