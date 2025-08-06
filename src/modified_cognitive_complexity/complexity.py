@@ -266,6 +266,9 @@ def cognitive_complexity(
 
     if goto_nesting:
         for labelId, goto_index in gotos:
+            if labelId not in labels:
+                continue
+            
             label_index, _ = labels[labelId]
             (start, stop) = sorted((goto_index, label_index))
             start += 1 # shift start behind goto/label
@@ -280,6 +283,9 @@ def cognitive_complexity(
 
     if structural_gotos:
         for labelId, goto_index in gotos:
+            if labelId not in labels:
+                continue
+
             _, label_depth = labels[labelId]
             scores[goto_index][1].nesting = dataclasses.replace(label_depth)
             
