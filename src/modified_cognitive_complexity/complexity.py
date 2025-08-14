@@ -89,36 +89,29 @@ def _collect_general(
             pass  # TODO: Maybe warning or exception?
         
     elif node_type == "goto_statement":
-        assert cursor.goto_first_child()
-        assert cursor.goto_next_sibling()
-        assert cursor.node.type == "statement_identifier"
-
-        label_text = cursor.node.text.decode(encoding="utf-8")
-        cursor.goto_parent()
-
-        gotos.append((label_text, len(scores)))
-
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=None)
-        ))
+        for _ in _childs(cursor):
+            if cursor.field_name == "label":
+                label_text = cursor.node.text.decode(encoding="utf-8")
+                gotos.append((label_text, len(scores)))
+        
+                scores.append((
+                    node_location,
+                    Score(increment=1, nesting=None)
+                ))
 
     elif node_type == "labeled_statement":
-        assert cursor.goto_first_child()
-        assert cursor.node.type == "statement_identifier"
-
-        label_text = cursor.node.text.decode(encoding="utf-8")
-        cursor.goto_parent()
-
-        labels[label_text] = len(scores), Nesting(value=depth)
+        for _ in _childs(cursor):
+            if cursor.field_name == "label":
+                label_text = cursor.node.text.decode(encoding="utf-8")
+                labels[label_text] = len(scores), Nesting(value=depth)
+                
+                # We add scores of 0 for labels, so we can track their locations later
+                # Scores of 0 are later removed again
+                scores.append((
+                    node_location,
+                    Score(increment=0, nesting=None)
+                ))
         
-        # We add scores of 0 for labels, so we can track their locations later
-        # Scores of 0 are later removed again
-        scores.append((
-            node_location,
-            Score(increment=0, nesting=None)
-        ))
-
         for _ in _childs(cursor):
             _collect_general(cursor, scores, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
