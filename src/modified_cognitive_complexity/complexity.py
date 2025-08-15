@@ -36,9 +36,10 @@ type Scores = list[tuple[Location, Score]]
 
 def _collect_general(
     cursor: TreeCursor,
-    scores: list[tuple[Location, Score]],
+    nestings: list[Nesting | None],
+    locations: list[Location | None],
     gotos: list[tuple[_LabelId, int]],
-    labels: dict[_LabelId, tuple[int, Nesting]],
+    labels: dict[_LabelId, int],
     function_scores: dict[bytes | None, Scores],
     depth: int,
     goto_nesting: bool,
@@ -55,12 +56,12 @@ def _collect_general(
     Additionally, locations of gotos and labels are tracked. 
 
     :param cursor: The cursor used to navigate the syntax tree.
-    :param scores: The list that accumulates cognitive complexity scores for
-        different code locations.
+    :param nestings: The list that accumulates nesting depths for different code locations.
+    :param locations: The list that accumulates the locations for different code locations.
+        `None` means no score penalty for this code.
     :param gotos: A list of (label name, index) tuples representing `goto` statements
-        and their position in the scores list.
-    :param labels: A mapping from label names to their position in the scores list 
-        + their nesting depth.
+        and their position in the nestings/locations list.
+    :param labels: A mapping from label names to their position in the nestings/locations list.
     :param function_scores: A mapping from function names to their collected scores.
     :param depth: The current nesting depth, which increases when entering 
         control structures that affect complexity.
@@ -92,28 +93,20 @@ def _collect_general(
         for _ in _childs(cursor):
             if cursor.field_name == "label":
                 label_text = cursor.node.text.decode(encoding="utf-8")
-                gotos.append((label_text, len(scores)))
-        
-                scores.append((
-                    node_location,
-                    Score(increment=1, nesting=None)
-                ))
+                gotos.append((label_text, len(locations)))
+                locations.append(node_location)
+                nestings.append(None)
 
     elif node_type == "labeled_statement":
         for _ in _childs(cursor):
             if cursor.field_name == "label":
                 label_text = cursor.node.text.decode(encoding="utf-8")
-                labels[label_text] = len(scores), Nesting(value=depth)
-                
-                # We add scores of 0 for labels, so we can track their locations later
-                # Scores of 0 are later removed again
-                scores.append((
-                    node_location,
-                    Score(increment=0, nesting=None)
-                ))
+                labels[label_text] = len(locations)
+                locations.append(None)
+                nestings.append(Nesting(depth))
         
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     # already handled by else branch
     # elif node_type == "compound_statement":
@@ -121,82 +114,69 @@ def _collect_general(
     #         collect_general(cursor, scores, gotos, labels, depth)
 
     elif node_type == "if_statement":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "else_clause":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=None)
-        ))
+        locations.append(node_location)
+        nestings.append(None)
         for _ in _childs(cursor):
             if cursor.node.type == "if_statement":
                 for _ in _childs(cursor):
-                    _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+                    _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
             else:
-                _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+                _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "switch_statement":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + 1, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "for_statement":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type in {"while_statement", "do_statement"}:
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
     
     elif node_type == "catch_clause":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name == "body" else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "conditional_expression":
-        scores.append((
-            node_location,
-            Score(increment=1, nesting=Nesting(value=depth))
-        ))
+        locations.append(node_location)
+        nestings.append(Nesting(value=depth))
         for _ in _childs(cursor):
             depth_inc = 1 if cursor.field_name in {"consequence", "alternative"} else 0
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth + depth_inc, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
     elif node_type == "binary_expression":
-        _collect_expression(cursor, None, scores)
+        _collect_expression(cursor, None, nestings, locations)
 
     else:
         for _ in _childs(cursor):
-            _collect_general(cursor, scores, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
+            _collect_general(cursor, nestings, locations, gotos, labels, function_scores, depth, goto_nesting=goto_nesting, structural_gotos=structural_gotos)
 
 
 def _collect_expression(
-        cursor: TreeCursor,
-        parent_operator: bytes | None,
-        scores: list[tuple[Location, Score]]
+    cursor: TreeCursor,
+    parent_operator: bytes | None,
+    nestings: list[Nesting | None],
+    locations: list[Location | None],
 ):
     """
     Recursively collect cognitive complexity costs from binary expressions.
@@ -204,8 +184,9 @@ def _collect_expression(
     :param cursor: A cursor currently positioned at a node, typically an expression node.
     :param parent_operator: The logical operator (e.g., `b'&&'`, `b'||'`) of the 
         parent binary expression, or None if there is no parent operator.
-    :param scores: The list to which complexity scores will be added.
-        Each score is a tuple containing the expression's location and its associated cost.
+    :param nestings: The list that accumulates nesting depths for different code locations.
+    :param locations: The list that accumulates the locations for different code locations.
+        `None` means no score penalty for this code.
     """
     
     operator: bytes | None = None
@@ -215,13 +196,11 @@ def _collect_expression(
                 operator = cursor.node.text
 
         if operator in {b"&&", b"||"} and parent_operator != operator:
-            scores.append((
-                Location(cursor.node.start_point, cursor.node.end_point),
-                Score(increment=1, nesting=None)
-            ))
+            locations.append(Location(cursor.node.start_point, cursor.node.end_point))
+            nestings.append(None)
 
     for _ in _childs(cursor):
-        _collect_expression(cursor, operator, scores)
+        _collect_expression(cursor, operator, nestings, locations)
 
     
 def cognitive_complexity(
@@ -250,39 +229,43 @@ def cognitive_complexity(
         is mapped to the 'None' key.
     """
     
-    scores: list[tuple[Location, Score]] = []
+    nestings: list[Nesting | None] = []
+    locations: list[Location | None] = []
     gotos: list[tuple[_LabelId, int]] = []
-    labels: dict[_LabelId, tuple[int, Nesting]] = {}
+    labels: dict[_LabelId, int] = {}
     function_scores: dict[bytes | None, Scores] = {}
 
-    _collect_general(cursor, scores, gotos, labels, function_scores, 0, goto_nesting, structural_gotos)
+    _collect_general(cursor, nestings, locations, gotos, labels, function_scores, 0, goto_nesting, structural_gotos)
 
     if goto_nesting:
+        goto_nesting = [0] * (len(nestings) + 1)
+        
         for labelId, goto_index in gotos:
             if labelId not in labels:
                 continue
             
-            label_index, _ = labels[labelId]
+            label_index = labels[labelId]
             (start, stop) = sorted((goto_index, label_index))
             start += 1 # shift start behind goto/label
-                
-            for _, cost in scores[start:stop]:
-                if cost.nesting is not None:
-                    cost.nesting.goto += 1
+            
+            goto_nesting[start] += 1
+            goto_nesting[stop] -= 1
         
-            for label_index, label_nesting in labels.values():
-                if start <= label_index < stop:
-                    label_nesting.goto += 1
+        current_goto_nesting = 0
+        for i, nesting in enumerate(nestings):
+            current_goto_nesting += goto_nesting[i]
+            if nesting is not None:
+                nesting.goto += current_goto_nesting
 
     if structural_gotos:
         for labelId, goto_index in gotos:
             if labelId not in labels:
                 continue
 
-            _, label_depth = labels[labelId]
-            scores[goto_index][1].nesting = dataclasses.replace(label_depth)
-            
-    function_scores[None] = [score for score in scores if score[1].total > 0]
+            label_index = labels[labelId]
+            nestings[goto_index] = dataclasses.replace(nestings[label_index])
+    
+    function_scores[None] = [(location, Score(1, nesting)) for nesting, location in zip(nestings, locations) if location is not None]
     return function_scores
 
 
